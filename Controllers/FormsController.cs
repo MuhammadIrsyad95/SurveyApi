@@ -74,20 +74,20 @@ namespace SurveyApi.Controllers
             existing.Description = form.Description;
 
             // Sinkronisasi questions
-            // 1. Hapus questions yang sudah tidak ada
             var questionIdsInput = form.Questions.Select(q => q.Id).ToList();
+
+            // Hapus question yang tidak ada di input
             var questionsToRemove = existing.Questions.Where(q => !questionIdsInput.Contains(q.Id)).ToList();
             foreach (var q in questionsToRemove)
                 _db.Questions.Remove(q);
 
-            // 2. Update atau tambah questions baru
+            // Update atau tambah question baru
             foreach (var qInput in form.Questions)
             {
                 var qExisting = existing.Questions.FirstOrDefault(q => q.Id == qInput.Id);
 
                 if (qExisting == null)
                 {
-                    // Question baru
                     var newQuestion = new Question
                     {
                         Id = Guid.NewGuid(),
@@ -110,13 +110,14 @@ namespace SurveyApi.Controllers
                 }
                 else
                 {
-                    // Update question lama
+                    // Update question existing
                     qExisting.Text = qInput.Text;
                     qExisting.Type = qInput.Type;
                     qExisting.IsRequired = qInput.IsRequired;
 
                     // Sinkronisasi choices
                     var choiceIdsInput = qInput.Choices.Select(c => c.Id).ToList();
+
                     var choicesToRemove = qExisting.Choices.Where(c => !choiceIdsInput.Contains(c.Id)).ToList();
                     foreach (var c in choicesToRemove)
                         _db.Choices.Remove(c);

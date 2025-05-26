@@ -1,30 +1,30 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using SurveyApi.Data;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Tambahkan koneksi ke SQL Server
+// DB Context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Tambahkan CORS dengan policy khusus
+// CORS policy
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLocalhosts",
-        policy =>
-        {
-            policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:3001",
-                "http://localhost:3002"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-        });
+    options.AddPolicy("AllowLocalhosts", policy =>
+    {
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3002"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
+    });
 });
 
-// Add services to the container, with JSON options for reference handling
+// Controller + JSON options
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -38,7 +38,24 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Pipeline
+// Pastikan folder uploads dalam wwwroot tersedia
+var uploadsFolder = Path.Combine(app.Environment.WebRootPath, "uploads");
+if (!Directory.Exists(uploadsFolder))
+{
+    Directory.CreateDirectory(uploadsFolder);
+}
+
+// Serve static files (wwwroot termasuk /uploads)
+app.UseStaticFiles();
+
+// Serve /uploads path secara eksplisit jika perlu
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsFolder),
+    RequestPath = "/uploads"
+});
+
+// Swagger
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -47,7 +64,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Pakai CORS sebelum routing dan authorization
 app.UseCors("AllowLocalhosts");
 
 app.UseAuthorization();
